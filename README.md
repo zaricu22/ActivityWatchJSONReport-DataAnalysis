@@ -53,3 +53,12 @@ RULES = {
 ```
 
 Add, remove, or adjust patterns to match your own workflow. `PRIORITY_ORDER` controls which category wins when multiple rules match the same window.
+
+## Data-science concepts implemented
+
+- **Behavioral data science / digital phenotyping** — the script's core purpose: inferring work behavior from passive digital-trace logs (`process()`).
+- **Time-series / temporal interval analysis** — computing overlap between event, AFK, and hour-slot intervals with timezone-aware timestamps (`active_overlap_by_hours()`, `load_afk_intervals()`).
+- **Exploratory data analysis (EDA) / descriptive statistics** — daily, per-category, hourly, and weekday aggregation and averages (`process()`).
+- **Rule-based classification (symbolic, non-ML)** — regex pattern matching with priority tie-breaking (`RULES`, `PRECOMPILED_REGEX_PATTERNS`, `classify()`).
+- **ETL / data wrangling** — parsing raw JSON buckets and filtering idle/unmatched/out-of-range events (`process()`).
+- **Reporting / data visualization** — Markdown tables and Unicode bar charts with color-coded intensity thresholds (`process()`).
