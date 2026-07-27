@@ -20,19 +20,20 @@ from datetime import datetime, timezone, date, timedelta
 # ── Category rules ────────────────────────────────────────────────────────────
 
 RULES = {
-    "Stack Overflow":   r"Stack Overflow",
-    "ActivityWatch":    r"ActivityWatch|aw-qt",
-    "Visual Studio Code": r"Visual Studio Code|SmartCity-Frontend|Code\.exe",
-    "IntelliJ":         r"IntelliJ|idea64\.exe|SmartCity-Backend|\.java|\.class|\.xml",
-    "Git":              r"github|KDiff|MINGW64|Rebase|Resolve Merge conflicts|Commit"
-                        r"|Git Extensions|zaricu22/SmartCity|SmartCity - Solo"
-                        r"|SmartCity - Release|zaricu22/ForwardingAgent"
-                        r"|zaricu22/Pharmacy|zaricu22/ZubarskaOrdinacija",
-    "Render":           r"Render",
-    "Text Editor":      r"Notepad|Sublime",
-    "AI - Prog":        r"AI Prog",
-    "File Explorer":    r"File Explorer|explorer\.exe|Windows|Task Manager",
-    "DB":               r"DBeaver|MySQL Workbench",
+    "Stack Overflow":       r"Stack Overflow",
+    "ActivityWatch":        r"ActivityWatch|aw-qt",
+    "Visual Studio Code":   r"Visual Studio Code|SmartCity-Frontend|Code\.exe",
+    "IntelliJ":             r"IntelliJ|idea64\.exe|SmartCity-Backend|\.java|\.class|\.xml",
+    "Git":                  r"github|KDiff|MINGW64|Rebase|Resolve Merge conflicts|Commit"
+                            r"|Git Extensions|zaricu22/SmartCity|SmartCity - Solo"
+                            r"|SmartCity - Release|zaricu22/ForwardingAgent"
+                            r"|zaricu22/Pharmacy|zaricu22/ZubarskaOrdinacija",
+    "Render":               r"Render",
+    "Text Editor":          r"Notepad|Sublime",
+    "AI - Prog":            r"AI Prog",
+    "File Explorer":        r"File Explorer|explorer\.exe|Windows|Task Manager",
+    "DB":                   r"DBeaver|MySQL Workbench",
+    "Python":               r"IDLE Shell|.py|MobileOperator_AgenticAI",
 }
 
 PRIORITY_ORDER = [
@@ -42,10 +43,11 @@ PRIORITY_ORDER = [
     "File Explorer",
     "Git",
     "IntelliJ",
+    "Python",
     "Render",
     "Stack Overflow",
     "Text Editor",
-    "Visual Studio Code",
+    "Visual Studio Code"
 ]
 
 # Pre-compile regex patterns once, from above RULES = { "cat": r"regex_pattern" }
@@ -307,6 +309,7 @@ def process(window_path: str, afk_path: str, start_date: date, output_path: str)
     BLACK = '<span style="font-weight: bold; color: black;">'
     RESET_COLOR = '</span>'
     COLOR = ""
+
     # ── 1. Daily breakdown with totals ────────────────────────────────────────
     w("## 1. Daily Breakdown by Sub-category")
     w("")
@@ -317,21 +320,43 @@ def process(window_path: str, afk_path: str, start_date: date, output_path: str)
         daily_cats[d].get(c, 0) > 0 for d in sorted_days
     )]
 
-    w("| Date | Total | " + " | ".join(header_cats) + " |")
-    w("|------|------:|" + "|".join("------:" for _ in header_cats) + "|")
+    # Semi-transparent gray reads as a light background on light themes and a
+    # dark background on dark themes, so weekend rows stay visible either way.
+    WEEKEND_BG = ('background-color: rgba(128,128,128,0.25); '
+                    'border-top: 2px solid #555555; border-bottom: 2px solid #555555;')
+
+    # Cells get explicit nowrap/alignment since raw <table> loses the
+    # sizing and column-alignment, which a markdown pipe table gets for free.
+    CELL_LEFT  = 'white-space: nowrap; text-align: left;'
+    CELL_RIGHT = 'white-space: nowrap; text-align: right;'
+    
+    # Raw HTML table instead of a pipe table: a markdown-table cell can only be
+    # highlighted via an inline <span>, which highlights the inner text instead of whole cell's background. 
+    w('<table>')
+    w(f'<thead><tr><th style="{CELL_LEFT}">Date</th><th style="{CELL_RIGHT}">Total</th>' +
+      "".join(f'<th style="{CELL_RIGHT}">{c}</th>' for c in header_cats) + "</tr></thead>")
+    w("<tbody>")
 
     for day in sorted_days:
+        is_weekend = datetime.strptime(day, "%Y-%m-%d").weekday() >= 5  # 5=Sat, 6=Sun
+        row_style = f' style="{WEEKEND_BG}"' if is_weekend else ''
         cells = []
         for cat in header_cats:
             secs = daily_cats[day].get(cat, 0)
-            cells.append(fmt(secs) if secs > 60 else ("—" if secs == 0 else "<1m"))
+            cell_text = fmt(secs) if secs > 60 else ("—" if secs == 0 else "<1m")
+            cells.append(f'<td style="{CELL_RIGHT}">{cell_text}</td>')
         if daily_totals[day] < 3600: COLOR = BLACK      # < 1h
         if daily_totals[day] >= 3600: COLOR = GREEN     # > 1-2h
         if daily_totals[day] >= 10800: COLOR = YELLOW   # > 3h
         if daily_totals[day] >= 14400: COLOR = ORANGE   # > 4h
         if daily_totals[day] >= 18000: COLOR = RED      # > 5h
         if daily_totals[day] >= 21600: COLOR = PURPLE   # > 6h
-        w(f"| {COLOR}{day}{RESET_COLOR} | {COLOR}{fmt(daily_totals[day])}{RESET_COLOR} | " + " | ".join(cells) + " |")
+        date_cell  = f'<td style="{CELL_LEFT}">{COLOR}{day}{RESET_COLOR}</td>'
+        total_cell = f'<td style="{CELL_RIGHT}">{COLOR}{fmt(daily_totals[day])}{RESET_COLOR}</td>'
+        w(f"<tr{row_style}>{date_cell}{total_cell}" + "".join(cells) + "</tr>")
+
+    w("</tbody>")
+    w("</table>")
 
     w("")
     w("---")
